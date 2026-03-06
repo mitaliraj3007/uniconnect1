@@ -5,29 +5,26 @@ import { API_BASE_URL } from "../config/api";
 
 export default function Login({ onLogin }) {
   // --- STATE ---
-  const [isLogin, setIsLogin] = useState(true); // True = Login mode, False = Sign Up mode
-  const [username, setUsername] = useState(""); // Only used for Sign Up  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [isLogin, setIsLogin] = useState(true);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");       // <-- THIS is the line your code was missing!
+  const [password, setPassword] = useState(""); // <-- And this one too!
   
   const navigate = useNavigate();
 
   // --- HANDLE FORM SUBMISSION ---
   const handleSubmit = async () => {
-    // Basic validation
     if (!email.trim() || !password.trim()) {
       alert("Please enter both email and password");
       return;
     }
     if (!isLogin && !username.trim()) {
-      alert("Please enter your name to sign up");
+      alert("Please enter your username to sign up");
       return;
     }
 
-    // Determine which API route to hit based on the mode
-    // (Ensure your backend routes in server.js/authRoutes.js match these names!)
     const endpoint = isLogin ? "/auth/login" : "/auth/register";
     
-    // Create the data object to send
     const payload = isLogin 
       ? { email, password } 
       : { username, email, password };
@@ -44,11 +41,9 @@ export default function Login({ onLogin }) {
       const data = await response.json();
 
       if (response.ok) {
-        // Save the token and user data
         localStorage.setItem("token", data.token);
         
-        // Use the user data from the backend, or fallback to a basic object
-        onLogin(data.user || { name: name || email.split("@")[0], email }); 
+        onLogin(data.user || { name: username || email.split("@")[0], email }); 
         navigate("/select-college");
       } else {
         alert(data.message || `${isLogin ? "Login" : "Sign up"} failed. Please try again.`);
@@ -59,7 +54,6 @@ export default function Login({ onLogin }) {
     }
   };
 
-  // --- GUEST & ADMIN LOGIN ---
   const handleGuestLogin = () => {
     onLogin({ name: "Guest User", email: "guest@gmail.com" });
     navigate("/select-college");
@@ -94,24 +88,22 @@ export default function Login({ onLogin }) {
           {isLogin ? "Welcome Back" : "Create Account"}
         </h2>
 
-        {/* NAME INPUT (Only shows if isLogin is false) */}
         <AnimatePresence>
           {!isLogin && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="w-full w-full overflow-hidden"
+              className="w-full overflow-hidden"
             >
               <label className="w-full text-left mb-2 text-gray-300 font-medium block">
-                Full Name
+                Username
               </label>
               <input
                 type="text"
-                placeholder="John Doe"
+                placeholder="JohnDoe123"
                 value={username}
-                onChang
-                e={(e) => setUsername(e.target.value)}
+                onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 mb-4 rounded-lg bg-white/20 text-white border border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400 placeholder-gray-300"
               />
             </motion.div>
@@ -147,7 +139,6 @@ export default function Login({ onLogin }) {
           {isLogin ? "Login" : "Sign Up"}
         </button>
 
-        {/* TOGGLE BUTTON */}
         <button
           onClick={() => setIsLogin(!isLogin)}
           className="mt-4 text-sm text-purple-300 hover:text-white transition underline"
