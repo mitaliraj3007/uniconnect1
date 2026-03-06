@@ -1,56 +1,134 @@
-import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Users, Store, Settings, User } from "lucide-react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function Navbar({ hideProfile = false }) {
+export default function Navbar() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { user, setUser, setCollege } = useAuth();
 
-  const navItems = [
-    { path: "/feed", icon: <Home className="w-6 h-6" />, label: "Feed" },
-    { path: "/friends", icon: <Users className="w-6 h-6" />, label: "Friends" },
-    { path: "/rent", icon: <Store className="w-6 h-6" />, label: "RentHub" },
-    { path: "/settings", icon: <Settings className="w-6 h-6" />, label: "Settings" },
-  ];
+  // --- NOTIFICATION STATE ---
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: "Welcome to UniConnect!", isRead: false },
+    { id: 2, text: "Admin liked your post.", isRead: false },
+  ]);
 
-  // Profile added conditionally
-  if (!hideProfile) {
-    navItems.push({ path: "/profile", icon: <User className="w-6 h-6" />, label: "Profile" });
-  }
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("college");
+    setUser(null);
+    setCollege(null);
+    navigate("/");
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+  };
+
+  if (!user) return null;
 
   return (
-    <motion.nav
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ type: "spring", stiffness: 80 }}
-      className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-purple-900 via-black to-purple-950 
-      border-t border-purple-600/40 shadow-lg backdrop-blur-lg flex justify-around items-center py-3"
-    >
-      {navItems.map(({ path, icon, label }) => {
-        const isActive = location.pathname === path;
+    <nav className="flex justify-between items-center p-4 bg-purple-900 text-white shadow-lg relative z-50">
+      
+      {/* LEFT SIDE: Logo & Main Navigation Links */}
+      <div className="flex items-center gap-8">
+        <div className="font-extrabold text-2xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-400">
+          <Link to="/feed">UniConnect</Link>
+        </div>
+        
+        {/* --- THE MISSING LINKS ARE BACK! --- */}
+        <div className="hidden md:flex gap-5 text-sm font-semibold text-purple-200">
+          <Link to="/feed" className="hover:text-white hover:underline underline-offset-4 transition">
+            Feed
+          </Link>
+          <Link to="/friends" className="hover:text-white hover:underline underline-offset-4 transition">
+            Find Friends
+          </Link>
+          <Link to="/rent" className="hover:text-white hover:underline underline-offset-4 transition">
+            Rent Hub
+          </Link>
+          <Link to="/chat" className="hover:text-white hover:underline underline-offset-4 transition">
+            Chat
+          </Link>
+        </div>
+      </div>
 
-        return (
-          <motion.button
-            key={path}
-            onClick={() => navigate(path)}
-            whileHover={{ scale: 1.2 }}
-            whileTap={{ scale: 0.9 }}
-            className={`flex flex-col items-center text-xs transition-all duration-300 ${
-              isActive ? "text-fuchsia-400" : "text-gray-400 hover:text-fuchsia-300"
-            }`}
+      {/* RIGHT SIDE: Notifications, Profile, and Logout */}
+      <div className="flex gap-6 items-center">
+        
+        {/* NOTIFICATION BELL */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2 text-2xl hover:bg-white/10 rounded-full transition"
+            title="Notifications"
           >
-            <div
-              className={`p-2 rounded-full ${
-                isActive ? "bg-purple-800/50 shadow-md" : "hover:bg-purple-800/30"
-              }`}
-            >
-              {icon}
-            </div>
-            <span className="mt-1">{label}</span>
-          </motion.button>
-        );
-      })}
-    </motion.nav>
+            🔔
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-purple-900">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* NOTIFICATION DROPDOWN */}
+          <AnimatePresence>
+            {showNotifications && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 mt-3 w-80 bg-white text-black rounded-xl shadow-2xl overflow-hidden border border-gray-200"
+              >
+                <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                  <h3 className="font-bold text-gray-800">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button 
+                      onClick={markAllAsRead}
+                      className="text-xs text-purple-600 hover:text-purple-800 font-semibold"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+                
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      No new notifications
+                    </div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div 
+                        key={notif.id} 
+                        className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition ${notif.isRead ? "opacity-60" : "bg-purple-50/50"}`}
+                      >
+                        <p className="text-sm text-gray-800">{notif.text}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* PROFILE & LOGOUT */}
+        <Link to="/profile" className="hover:text-purple-300 transition font-medium">
+          My Profile
+        </Link>
+
+        <button 
+          onClick={handleLogout}
+          className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold shadow-md transition"
+        >
+          Logout
+        </button>
+      </div>
+    </nav>
   );
 }

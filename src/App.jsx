@@ -1,6 +1,9 @@
-import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+
+// ✅ 1. Import your AuthProvider and useAuth
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 import Login from "./pages/Login";
 import SelectCollege from "./pages/SelectCollege";
@@ -14,41 +17,39 @@ import CreatePost from "./pages/CreatePost";
 import Navbar from "./components/Navbar";
 
 function AppContent() {
-  const [user, setUser] = useState(null);
-  const [college, setCollege] = useState(null);
+  // ✅ 2. Use global state from your AuthContext instead of local useState
+  const { user, setUser, college, setCollege } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ✅ Handle login types
   const handleLogin = (userData) => {
     setUser(userData);
     navigate("/select-college");
   };
 
   const handleGuestLogin = () => {
-    setUser({ name: "Guest User", type: "guest" });
+    setUser({ name: "Guest User", email: "guest@gmail.com", type: "guest" });
     navigate("/select-college");
   };
 
   const handleAdminLogin = () => {
-    setUser({ name: "Admin", type: "admin" });
+    setUser({ name: "Admin", email: "admin@uniconnect.com", type: "admin" });
     navigate("/feed");
   };
 
   const handleCollegeSelect = (collegeData) => {
-    setCollege(collegeData);
+    // Save it as an object so college.name works in your Profile page!
+    setCollege({ name: collegeData }); 
     navigate("/feed");
   };
 
-  // Check login state
   const isLoggedIn = !!user;
-
-  // ✅ Pages where top buttons should NOT appear
-  const hideTopButtons = ["/", "/select-college"].includes(window.location.pathname);
+  const hideTopButtons = ["/", "/select-college"].includes(location.pathname);
 
   return (
     <div className="bg-gradient-to-br from-purple-900 via-black to-purple-950 text-white min-h-screen flex flex-col relative overflow-hidden">
 
-      {/* ✅ Floating Top Buttons - only visible after login */}
+      {/* Floating Top Buttons - only visible after login */}
       {!hideTopButtons && isLoggedIn && (
         <div className="absolute top-4 right-4 flex space-x-3 z-50">
           <button
@@ -68,7 +69,7 @@ function AppContent() {
         </div>
       )}
 
-      {/* ✅ Floating Create Post Button (only after login) */}
+      {/* Floating Create Post Button (only after login) */}
       {isLoggedIn && !hideTopButtons && (
         <button
           onClick={() => navigate("/create")}
@@ -81,7 +82,6 @@ function AppContent() {
 
       <AnimatePresence mode="wait">
         <Routes>
-          {/* LOGIN PAGE */}
           <Route
             path="/"
             element={
@@ -93,124 +93,46 @@ function AppContent() {
             }
           />
 
-          {/* COLLEGE SELECTION */}
           <Route
             path="/select-college"
-            element={
-              isLoggedIn ? (
-                <SelectCollege onSelect={handleCollegeSelect} />
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={isLoggedIn ? <SelectCollege onSelect={handleCollegeSelect} /> : <Navigate to="/" />}
           />
 
-          {/* FEED */}
           <Route
             path="/feed"
-            element={
-              isLoggedIn && college ? (
-                <>
-                  <Feed />
-                  <Navbar hideProfile />
-                </>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={isLoggedIn && college ? <><Navbar /><Feed /></> : <Navigate to="/" />}
           />
 
-          {/* FIND FRIENDS */}
           <Route
             path="/friends"
-            element={
-              isLoggedIn ? (
-                <>
-                  <FindFriends />
-                  <Navbar hideProfile />
-                </>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={isLoggedIn ? <><Navbar /><FindFriends /></> : <Navigate to="/" />}
           />
 
-          {/* CHAT */}
           <Route
             path="/chat"
-            element={
-              isLoggedIn ? (
-                <>
-                  <Chat />
-                  <Navbar hideProfile />
-                </>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={isLoggedIn ? <><Navbar /><Chat /></> : <Navigate to="/" />}
           />
 
-          {/* RENT HUB */}
           <Route
             path="/rent"
-            element={
-              isLoggedIn ? (
-                <>
-                  <RentHub />
-                  <Navbar hideProfile />
-                </>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={isLoggedIn ? <><Navbar /><RentHub /></> : <Navigate to="/" />}
           />
 
-          {/* PROFILE */}
           <Route
             path="/profile"
-            element={
-              isLoggedIn ? (
-                <>
-                  <Profile />
-                  <Navbar hideProfile />
-                </>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={isLoggedIn ? <><Navbar /><Profile /></> : <Navigate to="/" />}
           />
 
-          {/* SETTINGS */}
           <Route
             path="/settings"
-            element={
-              isLoggedIn ? (
-                <>
-                  <Settings />
-                  <Navbar hideProfile />
-                </>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={isLoggedIn ? <><Navbar /><Settings /></> : <Navigate to="/" />}
           />
 
-          {/* CREATE POST */}
           <Route
             path="/create"
-            element={
-              isLoggedIn ? (
-                <>
-                  <CreatePost />
-                  <Navbar hideProfile />
-                </>
-              ) : (
-                <Navigate to="/" />
-              )
-            }
+            element={isLoggedIn ? <><Navbar /><CreatePost /></> : <Navigate to="/" />}
           />
 
-          {/* FALLBACK */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AnimatePresence>
@@ -218,10 +140,13 @@ function AppContent() {
   );
 }
 
+// ✅ 3. Wrap everything in your AuthProvider!
 export default function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
   );
 }
