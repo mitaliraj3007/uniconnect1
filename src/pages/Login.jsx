@@ -1,66 +1,57 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
 import { API_BASE_URL } from "../config/api";
 
 export default function Login({ onLogin }) {
-  // --- STATE ---
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");       // <-- THIS is the line your code was missing!
-  const [password, setPassword] = useState(""); // <-- And this one too!
-  
+  const [isLoading, setIsLoading] = useState(false); // ✅ Spinner state
   const navigate = useNavigate();
 
-  // --- HANDLE FORM SUBMISSION ---
-  const handleSubmit = async () => {
-    if (!email.trim() || !password.trim()) {
-      alert("Please enter both email and password");
-      return;
-    }
-    if (!isLogin && !username.trim()) {
-      alert("Please enter your username to sign up");
-      return;
-    }
+  // ✅ React Hook Form setup for professional validation
+  const { register, handleSubmit, formState: { errors }, reset } = useForm();
 
+  const onSubmit = async (data) => {
+    setIsLoading(true);
     const endpoint = isLogin ? "/auth/login" : "/auth/register";
-    
-    const payload = isLogin 
-      ? { email, password } 
-      : { username, email, password };
 
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
+      const resData = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("token", data.token);
+        localStorage.setItem("token", resData.token);
         
-        onLogin(data.user || { name: username || email.split("@")[0], email }); 
+        // ✅ Beautiful success toast instead of alert()
+        toast.success(isLogin ? "Welcome back!" : "Account created successfully!");
+        
+        onLogin(resData.user || { name: data.username || data.email.split("@")[0], email: data.email }); 
         navigate("/select-college");
       } else {
-        alert(data.message || `${isLogin ? "Login" : "Sign up"} failed. Please try again.`);
+        // ✅ Beautiful error toast
+        toast.error(resData.message || `${isLogin ? "Login" : "Sign up"} failed.`);
       }
     } catch (error) {
-      console.error("Auth Error:", error);
-      alert("Something went wrong connecting to the server.");
+      toast.error("Server connection failed. Is your backend running?");
+    } finally {
+      setIsLoading(false); // Turn off spinner
     }
+  };
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    reset(); // Clear errors when switching modes
   };
 
   const handleGuestLogin = () => {
     onLogin({ name: "Guest User", email: "guest@gmail.com" });
-    navigate("/select-college");
-  };
-
-  const handleAdminLogin = () => {
-    onLogin({ name: "Admin", email: "admin@uniconnect.com", role: "admin" });
     navigate("/select-college");
   };
 
@@ -70,79 +61,83 @@ export default function Login({ onLogin }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <motion.h1
-        className="text-6xl font-extrabold mb-10 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600"
-        initial={{ y: -40 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <motion.h1 className="text-6xl font-extrabold mb-10 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
         UniConnect
       </motion.h1>
 
-      <motion.div
-        className="bg-white/10 backdrop-blur-xl p-8 rounded-2xl shadow-xl w-80 flex flex-col items-center"
-        initial={{ scale: 0.9 }}
-        animate={{ scale: 1 }}
-      >
+      <motion.div className="bg-white/10 backdrop-blur-xl p-8 rounded-2xl shadow-xl w-80 flex flex-col items-center">
         <h2 className="text-2xl font-bold mb-6">
           {isLogin ? "Welcome Back" : "Create Account"}
         </h2>
 
-        <AnimatePresence>
-          {!isLogin && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="w-full overflow-hidden"
-            >
-              <label className="w-full text-left mb-2 text-gray-300 font-medium block">
-                Username
-              </label>
-              <input
-                type="text"
-                placeholder="JohnDoe123"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 mb-4 rounded-lg bg-white/20 text-white border border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400 placeholder-gray-300"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* ✅ Form uses handleSubmit from react-hook-form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+          
+          <AnimatePresence>
+            {!isLogin && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="w-full overflow-hidden mb-4"
+              >
+                <label className="w-full text-left mb-1 text-gray-300 font-medium block">Username</label>
+                <input
+                  type="text"
+                  placeholder="JohnDoe123"
+                  className={`w-full px-4 py-3 rounded-lg bg-white/20 text-white focus:outline-none focus:ring-2 ${errors.username ? "border-2 border-red-500" : "border border-purple-500 focus:ring-purple-400"}`}
+                  {...register("username", { required: !isLogin && "Username is required" })}
+                />
+                {errors.username && <p className="text-red-400 text-xs mt-1">{errors.username.message}</p>}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        <label className="w-full text-left mb-2 text-gray-300 font-medium">
-          Email Address
-        </label>
-        <input
-          type="email"
-          placeholder="example@gmail.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-3 mb-4 rounded-lg bg-white/20 text-white border border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400 placeholder-gray-300"
-        />
+          <div className="mb-4 w-full">
+            <label className="w-full text-left mb-1 text-gray-300 font-medium block">Email Address</label>
+            <input
+              type="email"
+              placeholder="example@gmail.com"
+              className={`w-full px-4 py-3 rounded-lg bg-white/20 text-white focus:outline-none focus:ring-2 ${errors.email ? "border-2 border-red-500" : "border border-purple-500 focus:ring-purple-400"}`}
+              {...register("email", { 
+                required: "Email is required",
+                pattern: { value: /^\S+@\S+$/i, message: "Invalid email format" }
+              })}
+            />
+            {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
+          </div>
 
-        <label className="w-full text-left mb-2 text-gray-300 font-medium">
-          Password
-        </label>
-        <input
-          type="password"
-          placeholder="Enter your password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-3 rounded-lg bg-white/20 text-white border border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400 placeholder-gray-300"
-        />
+          <div className="mb-6 w-full">
+            <label className="w-full text-left mb-1 text-gray-300 font-medium block">Password</label>
+            <input
+              type="password"
+              placeholder="Enter your password"
+              className={`w-full px-4 py-3 rounded-lg bg-white/20 text-white focus:outline-none focus:ring-2 ${errors.password ? "border-2 border-red-500" : "border border-purple-500 focus:ring-purple-400"}`}
+              {...register("password", { 
+                required: "Password is required",
+                minLength: { value: 6, message: "Password must be at least 6 characters" }
+              })}
+            />
+            {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
+          </div>
 
-        <button
-          onClick={handleSubmit}
-          className="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-3 rounded-lg hover:opacity-90 transition"
-        >
-          {isLogin ? "Login" : "Sign Up"}
-        </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-3 rounded-lg hover:opacity-90 transition disabled:opacity-50 flex justify-center items-center"
+          >
+            {/* ✅ Loading Spinner */}
+            {isLoading ? (
+              <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : null}
+            {isLoading ? "Processing..." : (isLogin ? "Login" : "Sign Up")}
+          </button>
+        </form>
 
-        <button
-          onClick={() => setIsLogin(!isLogin)}
-          className="mt-4 text-sm text-purple-300 hover:text-white transition underline"
-        >
+        <button onClick={toggleMode} className="mt-4 text-sm text-purple-300 hover:text-white transition underline">
           {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
         </button>
 
@@ -150,15 +145,10 @@ export default function Login({ onLogin }) {
           <span className="bg-[#1c1230] px-2 text-gray-400">OR</span>
         </div>
 
-        <button
-          onClick={handleGuestLogin}
-          className="w-full bg-gradient-to-r from-indigo-600 to-blue-500 text-white font-semibold py-3 rounded-lg hover:opacity-90 transition"
-        >
+        <button onClick={handleGuestLogin} className="w-full bg-gradient-to-r from-indigo-600 to-blue-500 text-white font-semibold py-3 rounded-lg hover:opacity-90 transition">
           Continue as Guest
         </button>
       </motion.div>
-
-      <p className="mt-10 text-gray-400 text-sm">© 2025 UniConnect</p>
     </motion.div>
   );
 }

@@ -1,3 +1,4 @@
+import { Toaster } from "react-hot-toast";
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
@@ -47,9 +48,12 @@ function AppContent() {
   const hideTopButtons = ["/", "/select-college"].includes(location.pathname);
 
   return (
+  
     <div className="bg-gradient-to-br from-purple-900 via-black to-purple-950 text-white min-h-screen flex flex-col relative overflow-hidden">
 
-      {/* Floating Top Buttons - only visible after login */}
+      <Toaster position="top-center" reverseOrder={false} /> {/* ✅ ADDED THIS */}
+
+      {/* Floating Top Buttons... */}
       {!hideTopButtons && isLoggedIn && (
         <div className="absolute top-4 right-4 flex space-x-3 z-50">
           <button
