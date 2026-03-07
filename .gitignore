@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 tailwindcss
+# Backend dependencies
+uniconnect-backend/node_modules/
+node_modules/
+
+# Environment variables (Never upload your passwords!)
+uniconnect-backend/.env
+.env
